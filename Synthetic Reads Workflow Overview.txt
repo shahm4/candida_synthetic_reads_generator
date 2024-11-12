@@ -1,0 +1,111 @@
+Synthetic Reads Workflow Overview
+
+Aim: Specificity Validation plan for Candida Genotyping pipeline
+Representative rDNA sequences from non- (CA, CD, CP, CT, CK, CG) Candida spp. will be downloaded from NCBI GenBank or other public databases and simulated 2x151bp reads will be made from relevant LSU/ITS-containing locus (matching the PCR amplicon) and run through the bioinformatic pipeline to perform in silico testing of the specificity of the analysis pipeline
+
+1. Pulled three accession numbers (.fasta) per off target species that contain the full LSU and ITS sequences needed to generate the simulated amplicons (and the "amplicon" sequences themselves)
+
+a. blast each of the sequences of the ITS and LSU for the 9 off target species and use the "exclude filter" to filter out the 6 on target strains
+b. pull accession numbers that are found both in the LSU and ITS blast search
+c. filter out the top three closet % identity with an assortment of %ID
+
+On Target Species:
+C. glabrata
+C. krusei
+C. albicans
+C. dublinensis
+C. parapsilosis
+C. tropicalis
+
+Off Target Species:
+C. catenulata; MK394144.1, KT336721.1, MK394156.1
+C. famata; CP046879.1, CP045117.1, MK394104.1
+C. guillermondii; MH545919.1, MK394111.1, KC119207.1
+C. haemuloni; MK394151.1, MK394152.1, MK394153.1
+C. inconspicua; MK394167.1, MH545929.1, MK394166.1
+C. kefyr; CP023460.1, CP015058.1, CP118240.1
+C. lusitaniae; CP038487.1, CP038488.1, MK394145.1
+C. orthopsilosis; MK394126.1, CP084605.1, MK394127.1
+Saccaromyces cerevisae; MH047190.1, CP129579.1, CP080614.1
+
+Primers Used:
+
+ITS Amplicon (~400 - 600 bp)
+ITS 4, ITS_Reverse, 5' - TCCTCCGCTTATTGATATGC - 3'
+ITS 5, ITS_Forward, 5' - GGAAGTAAAAGTCGTAACAAGG - 3' 
+
+LSU Amplicon (~650 - 750 bp)
+NL 2, LSU_Reverse, 5' - TTGGTCCGTGTTTCAAGACG - 3'
+NL 1, LSU_Forward, 5' - GCATATCAATAAGCGGAGGA - 3'
+
+
+2. make synthetic read pairs similar to the output generated from a novaseq run within the tune of the expected error rate to be within 0.5%
+
+3. add approximately 20% human background
+
+4. generate sufficient read pairs per amplicon
+
+
+Tools used:
+
+1. CRABS: Creating Reference databases for Amplicon-Based Sequencing
+
+Jeunen, G.-J., Dowle, E., Edgecombe, J., von Ammon, U., Gemmell, N. J., & Cross, H. (2022). crabs—A software program to generate curated reference databases for metabarcoding sequencing data. Molecular Ecology Resources, 00, 1– 14. https://doi.org/10.1111/1755-0998.13741
+
+github: https://github.com/gjeunen/reference_database_creator
+command line only toolkit running on Unix/Linux environments and is written in python3. It makes use of subprocess module in python to run several commands in bash syntax.
+
+Summary: CRABS is a versatile command-line only software program that generates curated reference databases for metagenomic analysis. The workflow consists of (1) fasta retrieval and (2) pulling amplicon regions through in silico PCR analysis producing and alignment file as well as a fastq file for downstream processing
+
+
+# insillico_pcr
+
+CRABS (with the help of CUTADAPT and VSEARCH) extracts the amplicon region of the primer set by conducting an in silicon PCR.
+
+File Names; --input, --output, 
+Primer Sequence (CRABS will reverse complement the reverse primer); --fwd (5'-3' direction), --rev (5'-3' direction), 
+--error
+
+Example: crabs insilico_pcr --input input.fasta --output output.fasta --fwd AGTC --rev ACTG --error 4.5
+
+
+2. ART: a next-generation sequencing read simulator
+
+Huang W, Li L, Myers JR, Marth GT. ART: a next-generation sequencing read simulator. Bioinformatics. 2012 Feb 15;28(4):593-4. doi: 10.1093/bioinformatics/btr708. Epub 2011 Dec 23. PMID: 22199392; PMCID: PMC3278762.
+
+https://www.niehs.nih.gov/research/resources/software/biostatistics/art/index.cfm
+Art is implemented in C++ with optimized algorithms and is highly efficient. ART is capable of outputs in the FASTQ format, and ALN with the ability to generate SAM alignments
+
+Summary: ART is a toll that simulates sequencing reads by mimicking real sequencing process with empirical error models or quality profiles from previous sequencing profiles.
+
+
+Version Used: ART-MountRainier-2016-06-05 (the latest version)
+
+
+# Illumina read simulation
+
+Single-end reads
+art_illumina [options] -i <INPUT_SEQ_FILE> -l <READ_LEN> -f <FOLD_COVERAGE> -o <OUTPUT_FILE_PREFIX>
+
+Example: art_illumina -sam -i seq_reference.fa -l 50 -f 10 -o ./outdir/dat_single_end
+
+
+Paired-end reads
+art_illumina [options] -i <INPUT_SEQ_FILE> -l <READ_LEN> -f <FOLD_COVERAGE> -o <OUTPUT_FILE_PREFIX> -m <MEAN_FRAG_LEN> -s <STD_DE>
+
+Example:art_illumina -p -sam -i seq_reference.fa -l 50 -f 20 -m 200 -s 10 -o d./outdir/dat_paired_end
+
+
+3. Seqtk
+
+github: https://github.com/lh3/seqtk
+
+Summary: Seqtk is a took for processing sequences in the FASTA or FASTQ format.
+
+# Downsample Human Reads
+
+Example: seqtk sample -s 100 (Input_seq_file) (number of reads) > (Output_seq_file)
+
+
+
+
